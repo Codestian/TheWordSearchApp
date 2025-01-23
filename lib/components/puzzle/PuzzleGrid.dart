@@ -14,6 +14,8 @@ class PuzzleGrid extends StatefulWidget {
   final void Function(List<List<int>> coordinates, String word) onDragEnd;
   final bool isPaused;
   final TransformationController transformationController;
+  final List<Widget> overlayChildren;
+  final bool showOverlay;
 
   const PuzzleGrid({
     super.key,
@@ -24,6 +26,8 @@ class PuzzleGrid extends StatefulWidget {
     required this.onDragEnd,
     required this.isPaused,
     required this.transformationController,
+    required this.overlayChildren,
+    required this.showOverlay,
   });
 
   @override
@@ -45,6 +49,10 @@ class _PuzzleGridState extends State<PuzzleGrid> {
 
   Timer? _movementTimer;
   Offset _offscreenDirection = Offset.zero;
+
+  late Size _interactiveViewerSize = Size.zero; // Default to Size.zero
+
+  double offset = 0;
 
   List<List<int>> bresenhamLine(int x0, int y0, int x1, int y1) {
     List<List<int>> points = [];
@@ -109,8 +117,10 @@ class _PuzzleGridState extends State<PuzzleGrid> {
   }
 
   void _startContinuousMovement() {
-    _movementTimer = Timer.periodic(Duration(milliseconds: 16), (_) {
+    _movementTimer = Timer.periodic(Duration(milliseconds: 10), (_) {
       if (_offscreenDirection == Offset.zero) return;
+
+      print('hello');
 
       final matrix = widget.transformationController.value;
       Matrix4 updatedMatrix = matrix.clone()
@@ -118,7 +128,7 @@ class _PuzzleGridState extends State<PuzzleGrid> {
 
       setState(() {
         widget.transformationController.value = updatedMatrix;
-        dragWidth += _offscreenDirection.dx * 2;
+        offset += _offscreenDirection.dx * 2;
       });
     });
   }
@@ -228,12 +238,20 @@ class _PuzzleGridState extends State<PuzzleGrid> {
   @override
   void initState() {
     super.initState();
-    gridWidth = findLargestSublistLength(widget.wordGrid) * size;
-    gridHeight = widget.wordGrid.length * size;
+    //  widget.transformationController.addListener(() {
+    //   final matrix = widget.transformationController.value;
+    //   final position = matrix.getTranslation();
+    //   setState(() {
+    //     debugCoords = position;
+    //   });
+    // });
+
+    gridWidth = findLargestSublistLength(widget.wordGrid) * size + size + size;
+    gridHeight = widget.wordGrid.length * size + size + size;
     length = max(gridWidth, gridHeight);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      centerPuzzle();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   centerPuzzle();
+    // });
   }
 
   @override
@@ -242,204 +260,314 @@ class _PuzzleGridState extends State<PuzzleGrid> {
     super.dispose();
   }
 
+  void _adjustTransformation() {
+    // Get the current matrix of the transformation
+    final matrix = widget.transformationController.value;
+
+    // Calculate the scaling factor based on the new size
+    final scaleX = _interactiveViewerSize.width / _interactiveViewerSize.width;
+    final scaleY =
+        _interactiveViewerSize.height / _interactiveViewerSize.height;
+
+    // Adjust the translation to keep the widget in the same place
+    final translation = matrix.getTranslation();
+    final adjustedTranslation = Offset(
+      translation.x * scaleX,
+      translation.y * scaleY,
+    );
+
+    // Apply the new scale and translation to the transformation matrix
+    final newMatrix = Matrix4.identity()
+      ..translate(adjustedTranslation.dx, adjustedTranslation.dy)
+      ..scale(scaleX, scaleY);
+
+    // Update the transformation matrix
+    widget.transformationController.value = newMatrix;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
-            child: Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .primaryContainer
-            .withValues(alpha: 0.2),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        ),
-      ),
-      child: InteractiveViewer(
-          transformationController: widget.transformationController,
-          panEnabled: true,
-          scaleEnabled: true,
-          minScale: 0.5,
-          maxScale: 4.0,
-          boundaryMargin: const EdgeInsets.all(30),
-          constrained: false,
-          child: Opacity(
-            opacity: widget.isPaused ? 0.2 : 1.0,
-            child: SizedBox(
-              width: length,
-              height: length,
-              child: Center(
-                child: SizedBox(
-                  width: gridWidth,
-                  height: gridHeight,
-                  child: Stack(
-                    children: <Widget>[
-                      Column(
-                        children: widget.wordGrid.map((List<String> row) {
-                          return Row(
-                            children: row.map((String character) {
-                              return GridCell(character, size,
-                                  Theme.of(context).colorScheme.secondary);
-                            }).toList(),
-                          );
-                        }).toList(),
-                      ),
-                      for (var i = 0; i < widget.solvedWords.length; i++)
-                        Highlight(
-                          size,
-                          [
-                            widget.solvedWords[i][0][0].toDouble(),
-                            widget.solvedWords[i][0][1].toDouble()
-                          ],
-                          [
-                            widget.solvedWords[i][1][0].toDouble(),
-                            widget.solvedWords[i][1][1].toDouble()
-                          ],
-                          widget.listOfColors[i],
-                        ),
-                      DragHighlight(
-                          size,
-                          [drawHighlightOriginCol, drawHighlightOriginRow],
-                          drawHighlightAngle,
-                          dragWidth,
-                          Theme.of(context).colorScheme.primary),
-                      GestureDetector(
-                        onLongPressStart: (LongPressStartDetails details) {
-                          setState(() {
-                            drawHighlightOriginCol =
-                                (details.localPosition.dy / size).floor();
-                            drawHighlightOriginRow =
-                                (details.localPosition.dx / size).floor();
-                          });
-                        },
-                        onLongPressEnd: (LongPressEndDetails details) {
-                          _stopContinuousMovement();
-
-                          if (drawEndPoint.isNotEmpty) {
-                            List<List<int>> linePoints = bresenhamLine(
-                                drawHighlightOriginCol,
-                                drawHighlightOriginRow,
-                                drawEndPoint[0],
-                                drawEndPoint[1]);
-
-                            String word = '';
-
-                            for (var point in linePoints) {
-                              int row = point[1];
-                              int col = point[0];
-                              word += widget.wordGrid[col][row];
-                            }
-
-                            widget.onDrag('');
-                            widget.onDragEnd(linePoints, word);
-                            setState(() {
-                              drawHighlightOriginCol = 0;
-                              drawHighlightOriginRow = 0;
-                              drawHighlightAngle = Angle.right;
-                              dragWidth = 0;
-                              drawEndPoint = [];
-                            });
-                          }
-                        },
-                        onLongPressMoveUpdate:
-                            (LongPressMoveUpdateDetails details) {
-                          _handleDrag(details.globalPosition);
-
-                          double col = (details.localPosition.dy / size);
-                          double row = (details.localPosition.dx / size);
-
-                          Map<String, double> test = calculateLineProperties([
-                            drawHighlightOriginCol.toDouble() + 0.5,
-                            drawHighlightOriginRow.toDouble() + 0.5,
-                          ], [
-                            col,
-                            row
-                          ]);
-
-                          Angle roundedAngle = getNearestAngle(test['angle']!);
-
-                          List<int> finalEndPoint = [col.floor(), row.floor()];
-
-                          switch (roundedAngle) {
-                            case Angle.right:
-                              finalEndPoint[0] = drawHighlightOriginCol;
-                              break;
-                            case Angle.left:
-                              finalEndPoint[0] = drawHighlightOriginCol;
-                              break;
-                            case Angle.top:
-                              finalEndPoint[1] = drawHighlightOriginRow;
-                              break;
-                            case Angle.bottom:
-                              finalEndPoint[1] = drawHighlightOriginRow;
-                              break;
-                            case Angle.topRight:
-                              finalEndPoint[0] = drawHighlightOriginCol -
-                                  (test['length']! / sqrt(2)).toInt();
-                              finalEndPoint[1] = drawHighlightOriginRow +
-                                  (test['length']! / sqrt(2)).toInt();
-                              break;
-                            case Angle.topLeft:
-                              finalEndPoint[0] = drawHighlightOriginCol -
-                                  (test['length']! / sqrt(2)).toInt();
-                              finalEndPoint[1] = drawHighlightOriginRow -
-                                  (test['length']! / sqrt(2)).toInt();
-                              break;
-                            case Angle.bottomRight:
-                              finalEndPoint[0] = drawHighlightOriginCol +
-                                  (test['length']! / sqrt(2)).toInt();
-                              finalEndPoint[1] = drawHighlightOriginRow +
-                                  (test['length']! / sqrt(2)).toInt();
-                              break;
-                            case Angle.bottomLeft:
-                              finalEndPoint[0] = drawHighlightOriginCol +
-                                  (test['length']! / sqrt(2)).toInt();
-                              finalEndPoint[1] = drawHighlightOriginRow -
-                                  (test['length']! / sqrt(2)).toInt();
-                              break;
-                          }
-
-                          List<List<int>> linePoints = bresenhamLine(
-                              drawHighlightOriginCol,
-                              drawHighlightOriginRow,
-                              finalEndPoint[0],
-                              finalEndPoint[1]);
-
-                          String word = '';
-
-                          for (var point in linePoints) {
-                            int row = point[1];
-                            int col = point[0];
-                            word += widget.wordGrid[col][row];
-                          }
-
-                          widget.onDrag(word);
-
-                          setState(() {
-                            dragWidth =
-                                ((test['length']! <= 1 ? 1 : test['length']!) *
-                                    size);
-
-                            drawHighlightAngle = roundedAngle;
-
-                            drawEndPoint = finalEndPoint;
-                          });
-                        },
-                        child: Container(
-                          width: gridWidth,
-                          height: gridHeight,
-                          color: Colors.transparent,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
+      child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withValues(alpha: 0.2),
+            border: Border.all(
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
-        ),
-            ),
+          child: Stack(
+            children: [
+              LayoutBuilder(builder: (context, constraints) {
+                return InteractiveViewer(
+                  transformationController: widget.transformationController,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  constrained: false,
+                  child: Opacity(
+                    opacity: widget.isPaused ? 0.2 : 1.0,
+                    child: SizedBox(
+                      width: length,
+                      height: length,
+                      child: Center(
+                        child: SizedBox(
+                          width: gridWidth,
+                          height: gridHeight,
+                          child: Stack(
+                            children: <Widget>[
+                              Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      GridCell('D', size, Colors.red),
+                                    ],
+                                  ),
+                                  ...widget.wordGrid.map((List<String> row) {
+                                    return Row(children: [
+                                      GridCell('D', size, Colors.red),
+                                      ...row.map((String character) {
+                                        return GridCell(
+                                          character,
+                                          size,
+                                          Theme.of(context)
+                                              .colorScheme
+                                              .secondary,
+                                        );
+                                      }),
+                                      GridCell('D', size, Colors.red),
+                                    ]);
+                                  }).toList(),
+                                  Row(
+                                    children: [
+                                      GridCell('D', size, Colors.red),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              for (var i = 0;
+                                  i < widget.solvedWords.length;
+                                  i++)
+                                Highlight(
+                                  size,
+                                  [
+                                    widget.solvedWords[i][0][0].toDouble() + 1,
+                                    widget.solvedWords[i][0][1].toDouble() + 1
+                                  ],
+                                  [
+                                    widget.solvedWords[i][1][0].toDouble() + 1,
+                                    widget.solvedWords[i][1][1].toDouble() + 1
+                                  ],
+                                  widget.listOfColors[i],
+                                ),
+                              DragHighlight(
+                                  size,
+                                  [
+                                    drawHighlightOriginCol,
+                                    drawHighlightOriginRow
+                                  ],
+                                  drawHighlightAngle,
+                                  dragWidth + offset,
+                                  Theme.of(context).colorScheme.primary),
+                              GestureDetector(
+                                onLongPressStart:
+                                    (LongPressStartDetails details) {
+                                  setState(() {
+                                    drawHighlightOriginCol =
+                                        (details.localPosition.dy / size)
+                                            .floor();
+                                    drawHighlightOriginRow =
+                                        (details.localPosition.dx / size)
+                                            .floor();
+                                  });
+                                },
+                                onLongPressEnd: (LongPressEndDetails details) {
+                                  _stopContinuousMovement();
 
+                                  if (drawEndPoint.isNotEmpty) {
+                                    List<List<int>> linePoints = bresenhamLine(
+                                        drawHighlightOriginCol,
+                                        drawHighlightOriginRow,
+                                        drawEndPoint[0],
+                                        drawEndPoint[1]);
+
+                                    String word = '';
+
+                                    for (var point in linePoints) {
+                                      int row = point[1] - 1;
+                                      int col = point[0] - 1;
+
+                                      // Check if the indices are valid
+                                      if (col >= 0 &&
+                                          col < widget.wordGrid.length &&
+                                          row >= 0 &&
+                                          row < widget.wordGrid[col].length) {
+                                        word += widget.wordGrid[col][row];
+                                      }
+                                    }
+
+                                    widget.onDrag('');
+                                    widget.onDragEnd(linePoints, word);
+                                    setState(() {
+                                      drawHighlightOriginCol = 0;
+                                      drawHighlightOriginRow = 0;
+                                      drawHighlightAngle = Angle.right;
+                                      dragWidth = 0;
+                                      drawEndPoint = [];
+                                      offset = 0;
+                                    });
+                                  }
+                                },
+                                onLongPressMoveUpdate:
+                                    (LongPressMoveUpdateDetails details) {
+                                  _handleDrag(details.globalPosition);
+
+                                  double col =
+                                      (details.localPosition.dy / size);
+                                  double row =
+                                      (details.localPosition.dx / size);
+
+                                  Map<String, double> test =
+                                      calculateLineProperties([
+                                    drawHighlightOriginCol.toDouble() + 0.5,
+                                    drawHighlightOriginRow.toDouble() + 0.5,
+                                  ], [
+                                    col,
+                                    row
+                                  ]);
+
+                                  Angle roundedAngle =
+                                      getNearestAngle(test['angle']!);
+
+                                  List<int> finalEndPoint = [
+                                    col.floor(),
+                                    row.floor()
+                                  ];
+
+                                  switch (roundedAngle) {
+                                    case Angle.right:
+                                      finalEndPoint[0] = drawHighlightOriginCol;
+                                      break;
+                                    case Angle.left:
+                                      finalEndPoint[0] = drawHighlightOriginCol;
+                                      break;
+                                    case Angle.top:
+                                      finalEndPoint[1] = drawHighlightOriginRow;
+                                      break;
+                                    case Angle.bottom:
+                                      finalEndPoint[1] = drawHighlightOriginRow;
+                                      break;
+                                    case Angle.topRight:
+                                      finalEndPoint[0] =
+                                          drawHighlightOriginCol -
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      finalEndPoint[1] =
+                                          drawHighlightOriginRow +
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      break;
+                                    case Angle.topLeft:
+                                      finalEndPoint[0] =
+                                          drawHighlightOriginCol -
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      finalEndPoint[1] =
+                                          drawHighlightOriginRow -
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      break;
+                                    case Angle.bottomRight:
+                                      finalEndPoint[0] =
+                                          drawHighlightOriginCol +
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      finalEndPoint[1] =
+                                          drawHighlightOriginRow +
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      break;
+                                    case Angle.bottomLeft:
+                                      finalEndPoint[0] =
+                                          drawHighlightOriginCol +
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      finalEndPoint[1] =
+                                          drawHighlightOriginRow -
+                                              (test['length']! / sqrt(2))
+                                                  .toInt();
+                                      break;
+                                  }
+
+                                  List<List<int>> linePoints = bresenhamLine(
+                                      drawHighlightOriginCol,
+                                      drawHighlightOriginRow,
+                                      finalEndPoint[0],
+                                      finalEndPoint[1]);
+
+                                  String word = '';
+
+                                  for (var point in linePoints) {
+                                    int row = point[1] - 1;
+                                    int col = point[0] - 1;
+
+                                    // Check if the indices are valid
+                                    if (col >= 0 &&
+                                        col < widget.wordGrid.length &&
+                                        row >= 0 &&
+                                        row < widget.wordGrid[col].length) {
+                                      word += widget.wordGrid[col][row];
+                                    }
+                                  }
+
+                                  widget.onDrag(word);
+
+                                  setState(() {
+                                    dragWidth = ((test['length']! <= 1
+                                            ? 1
+                                            : test['length']!) *
+                                        size);
+
+                                    drawHighlightAngle = roundedAngle;
+
+                                    drawEndPoint = finalEndPoint;
+                                  });
+                                },
+                                child: Container(
+                                  width: gridWidth,
+                                  height: gridHeight,
+                                  color: Colors.transparent,
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (widget.showOverlay)
+                Container(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  child: Center(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: widget.overlayChildren),
+                  ),
+                ),
+              Container(
+                child: Column(
+                  children: [Text(_interactiveViewerSize.toString())],
+                ),
+              )
+            ],
+          )),
     );
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_advanced_switch/flutter_advanced_switch.dart';
 import 'package:word_search/components/ActionButton.dart';
 import 'package:word_search/components/AppBarTitle.dart';
 import 'package:word_search/components/BottomButton.dart';
+import 'package:word_search/components/CustomSlider.dart';
+import 'package:word_search/components/CustomSwitch.dart';
 import 'package:word_search/models/word_puzzle_model.dart';
 import 'package:word_search/screens/PuzzleScreen.dart';
 import 'package:word_search/screens/pages/createpuzzle/CreateWordListPage.dart';
@@ -27,6 +30,9 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
     timerLast: 0,
     grid: [],
   );
+
+  bool enableTimer = false;
+  final _controller = ValueNotifier<bool>(false);
 
   Widget Topbar() {
     return AppBar(
@@ -66,17 +72,16 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
             style: Theme.of(context).textTheme.labelLarge,
           ),
         ),
-        Slider(
+        CustomSlider(
+          min: 5,
+          max: 20,
+          divisions: 15,
           value: wordPuzzleModel.verticalSize.toDouble(),
-          onChanged: (double value) {
+          onChanged: (value) {
             setState(() {
               wordPuzzleModel.verticalSize = value.round();
             });
           },
-          min: 5,
-          max: 20,
-          divisions: 15,
-          label: wordPuzzleModel.verticalSize.toString(),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -85,17 +90,16 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
             style: Theme.of(context).textTheme.labelLarge,
           ),
         ),
-        Slider(
+                  CustomSlider(
+          min: 5,
+          max: 20,
+          divisions: 15,
           value: wordPuzzleModel.horizontalSize.toDouble(),
-          onChanged: (double value) {
+          onChanged: (value) {
             setState(() {
               wordPuzzleModel.horizontalSize = value.round();
             });
           },
-          min: 5,
-          max: 20,
-          divisions: 15,
-          label: wordPuzzleModel.horizontalSize.toString(),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -107,79 +111,77 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
                 'Timer duration',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
-              Switch(
-                value:
-                    true, // Boolean variable controlling the state of the switch
-                onChanged: (bool value) {
-                  setState(() {
-                    // true = value; // Update the state when the switch is toggled
-                  });
-                },
-              ),
+              CustomSwitch(
+                  controller: _controller,
+                  activeText: "ON",
+                  inactiveText: "OFF")
             ],
           ),
         ),
         const SizedBox(height: 12),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              Row(
-                children: <Widget>[
-                  TimerBox(context, 30, wordPuzzleModel.timer == 30, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 30;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 60, wordPuzzleModel.timer == 60, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 60;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 180, wordPuzzleModel.timer == 180, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 180;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 300, wordPuzzleModel.timer == 300, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 300;
-                    });
-                  }),
-                ],
-              ),
-              SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  TimerBox(context, 600, wordPuzzleModel.timer == 600, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 600;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 900, wordPuzzleModel.timer == 900, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 900;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 1800, wordPuzzleModel.timer == 1800, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 1800;
-                    });
-                  }),
-                  SizedBox(width: 12),
-                  TimerBox(context, 3600, wordPuzzleModel.timer == 3600, () {
-                    setState(() {
-                      wordPuzzleModel.timer = 3600;
-                    });
-                  }),
-                ],
-              ),
-            ],
+        Opacity(
+          opacity: enableTimer ? 1.0 : 0.4,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                Row(
+                  children: <Widget>[
+                    TimerBox(context, 30, wordPuzzleModel.timer == 30, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 30;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 60, wordPuzzleModel.timer == 60, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 60;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 180, wordPuzzleModel.timer == 180, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 180;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 300, wordPuzzleModel.timer == 300, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 300;
+                      });
+                    }),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Row(
+                  children: <Widget>[
+                    TimerBox(context, 600, wordPuzzleModel.timer == 600, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 600;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 900, wordPuzzleModel.timer == 900, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 900;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 1800, wordPuzzleModel.timer == 1800, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 1800;
+                      });
+                    }),
+                    SizedBox(width: 12),
+                    TimerBox(context, 3600, wordPuzzleModel.timer == 3600, () {
+                      setState(() {
+                        wordPuzzleModel.timer = 3600;
+                      });
+                    }),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -307,7 +309,11 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
                         wordPuzzleModel.wordList);
                     wordPuzzleModel.grid = puzzle;
 
-                    wordPuzzleModel.timerLast = wordPuzzleModel.timer;
+                    if (enableTimer) {
+                      wordPuzzleModel.timerLast = wordPuzzleModel.timer;
+                    } else {
+                      wordPuzzleModel.timer = 0;
+                    }
                     wordPuzzleModel.foundWordList = [];
 
                     Navigator.push(
@@ -325,6 +331,21 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
                       .showSnackbarError(context, 'List name is empty');
                 }
               });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller.addListener(() {
+      setState(() {
+        if (_controller.value) {
+          enableTimer = true;
+        } else {
+          enableTimer = false;
+        }
+      });
+    });
   }
 
   @override
@@ -373,13 +394,6 @@ class _CreatePuzzleScreenState extends State<CreatePuzzleScreen> {
       }),
     );
   }
-  // appBar:
-  // body: Column(
-  //   children: <Widget>[
-
-  // ),
-  //   );
-  // }
 }
 
 Widget TimerBox(

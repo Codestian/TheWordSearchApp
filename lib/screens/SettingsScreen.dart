@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:word_search/components/ActionButton.dart';
 import 'package:word_search/components/AppBarTitle.dart';
+import 'package:word_search/components/CustomSwitch.dart';
 import 'package:word_search/providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -12,6 +13,24 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _brightnessController = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+
+    _brightnessController.value = ref.read(settingsThemeBrightnessProvider);
+    _brightnessController.addListener(() {
+      setState(() {
+        if (_brightnessController.value) {
+          ref.read(settingsThemeBrightnessProvider.notifier).setDark();
+        } else {
+          ref.read(settingsThemeBrightnessProvider.notifier).setLight();
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,22 +91,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-          SwitchListTile(
-            title: const Text('Dark mode'),
-            value: ref.watch(
-                settingsThemeBrightnessProvider), // Watch the current theme state
-            onChanged: (bool isDark) {
-              if (isDark) {
-                ref
-                    .read(settingsThemeBrightnessProvider.notifier)
-                    .setDark(); // Set dark mode
-              } else {
-                ref
-                    .read(settingsThemeBrightnessProvider.notifier)
-                    .setLight(); // Set light mode
-              }
-            },
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment
+                  .spaceBetween, // Ensures space between Text and Switch
+              children: [
+                Text(
+                  'Dark mode',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                CustomSwitch(
+                    controller: _brightnessController,
+                    activeText: "ON",
+                    inactiveText: "OFF")
+              ],
+            ),
           ),
+          // SwitchListTile(
+          //   title: const Text('Dark mode'),
+          //   value: ref.watch(
+          //       settingsThemeBrightnessProvider), // Watch the current theme state
+          //   onChanged: (bool isDark) {
+          //     if (isDark) {
+          //       ref
+          //           .read(settingsThemeBrightnessProvider.notifier)
+          //           .setDark(); // Set dark mode
+          //     } else {
+          //       ref
+          //           .read(settingsThemeBrightnessProvider.notifier)
+          //           .setLight(); // Set light mode
+          //     }
+          //   },
+          // ),
         ],
       )),
     );

@@ -11,6 +11,7 @@ import 'package:word_search/components/puzzle/PuzzleGrid.dart';
 import 'package:word_search/main.dart';
 import 'package:word_search/models/word_puzzle_model.dart';
 import 'package:word_search/screens/PlayScreen.dart';
+import 'package:word_search/screens/SettingsScreen.dart';
 import 'package:word_search/services/wordsearch.dart';
 import 'package:word_search/utilities/GeneralUtility.dart';
 import 'package:word_search/utils/colors.dart';
@@ -81,7 +82,32 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                   (Route<dynamic> route) => false, // Remove all previous routes
                 );
               }, 'QUIT', Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.onPrimary)
+                  Theme.of(context).colorScheme.onPrimary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SettingsScreen()),
+                      );
+                    },
+                    child: Container(
+                      margin: EdgeInsets.all(12),
+                      width: 32,
+                      height: 32,
+                      color: Theme.of(context).colorScheme.primaryFixed,
+                      child: Icon(
+                        Icons.settings,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onPrimaryFixed,
+                      ),
+                    ),
+                  )
+                ],
+              )
             ]);
       },
     );
@@ -104,6 +130,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
           children: [
             PauseButton(context, () {
               restartGame();
+              Navigator.of(context).pop();
             }, 'YES', Theme.of(context).colorScheme.error,
                 Theme.of(context).colorScheme.errorContainer),
             PauseButton(context, () {
@@ -142,12 +169,11 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       listOfColors = List.filled(
           widget.wordPuzzleModel.wordList.length, Colors.transparent);
     });
-    Navigator.of(context).pop();
   }
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isRunning) {
+      if (_isRunning && widget.wordPuzzleModel.timerLast > 0) {
         setState(() {
           widget.wordPuzzleModel.timerLast--;
         });
@@ -391,10 +417,8 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
 
   Widget MainPuzzle() => Column(
         children: [
-          PuzzleAction(
-              context,
-              GeneralUtility().formatTime(widget.wordPuzzleModel.timerLast),
-              _transformationController),
+          PuzzleAction(context, widget.wordPuzzleModel.timer,
+              widget.wordPuzzleModel.timerLast, _transformationController),
           PuzzleGrid(
             transformationController: _transformationController,
             wordGrid: widget.wordPuzzleModel.grid,
@@ -423,6 +447,47 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
               }
             },
             isPaused: isPaused,
+            overlayChildren: [
+              Text(
+                'Game over!'.toUpperCase(),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                    fontSize: 16),
+              ),
+              // SizedBox(height: 6),
+              // Text(
+              //   'Heads up! Pop up ad in 5...'.toUpperCase(),
+              //   style: TextStyle(
+              //       color: Theme.of(context).colorScheme.primary,
+              //       fontWeight: FontWeight.bold,
+              //       letterSpacing: 2,
+              //       fontSize: 12),
+              // ),
+              SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  restartGame();
+                },
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  color: Theme.of(context).colorScheme.primary,
+                  child: Text(
+                    'Restart'.toUpperCase(),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 4,
+                        fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+            showOverlay: (widget.wordPuzzleModel.timerLast == 0 &&
+                    widget.wordPuzzleModel.timer != 0) ||
+                (widget.wordPuzzleModel.wordList.length ==
+                    widget.wordPuzzleModel.foundWordList.length),
           ),
           Container(
             height: 32,
@@ -474,14 +539,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
               ),
               child: TextButton(
                   onPressed: () {
-                    setState(() {
-                      solvedWords = [
-                        [
-                          [1, 2],
-                          [3, 4]
-                        ]
-                      ];
-                    });
+                    setState(() {});
                   },
                   child: Text('test button')),
               // child: const Center(
@@ -493,7 +551,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       ));
 }
 
-Widget PuzzleAction(BuildContext context, String timer,
+Widget PuzzleAction(BuildContext context, int timer, int timerLeft,
         TransformationController transformationController) =>
     Container(
         color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.6),
@@ -523,11 +581,23 @@ Widget PuzzleAction(BuildContext context, String timer,
               ),
             ),
             const Spacer(),
-            Text(timer,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary,
-                )),
+            Row(
+              children: <Widget>[
+                Icon(
+                  timer == 0
+                      ? Icons.hourglass_empty_rounded
+                      : timerLeft == 0 ? Icons.hourglass_bottom : Icons.hourglass_top,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 16,
+                ),
+                SizedBox(width: 4),
+                Text(GeneralUtility().formatTime(timerLeft),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    )),
+              ],
+            ),
             const Spacer(),
             Container(
               width: 32,

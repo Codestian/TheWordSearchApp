@@ -219,7 +219,8 @@ class _PuzzleCardState extends ConsumerState<PuzzleCard> {
                                     .withValues(alpha: 0.1),
                               ),
                             ),
-                            child: Column(
+                            child: IntrinsicWidth(
+                              child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 MoreButton(Icons.casino, 'Regenerate',
@@ -228,6 +229,7 @@ class _PuzzleCardState extends ConsumerState<PuzzleCard> {
                                 MoreButton(
                                     Icons.delete, 'Delete', widget.onDelete),
                               ],
+                            ),
                             ),
                           )),
                     ],
@@ -242,6 +244,7 @@ class _PuzzleCardState extends ConsumerState<PuzzleCard> {
       GestureDetector(
         onTap: onTap,
         child: Container(
+          color: Colors.transparent,
           padding: EdgeInsets.symmetric(horizontal: 12),
           height: 40,
           child: Center(

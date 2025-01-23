@@ -92,6 +92,8 @@ class _SolveGridPageState extends State<SolveGridPage> {
               
             },
             isPaused: false,
+            overlayChildren: [],
+            showOverlay: false,
           ),
           Container(
             height: 32,

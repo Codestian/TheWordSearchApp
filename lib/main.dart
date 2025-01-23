@@ -98,7 +98,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .primary
-                                    .withValues(alpha: 0.15),
+                                    .withValues(alpha: 0.1),
                               ),
                             ),
                           ),
@@ -167,8 +167,8 @@ class _MenuScreenState extends State<MenuScreen> {
                         "Papaya",
                       ],
                       foundWordList: [],
-                      timer: 360,
-                      timerLast: 360,
+                      timer: 0,
+                      timerLast: 0,
                       grid: [],
                     );
                     try {
